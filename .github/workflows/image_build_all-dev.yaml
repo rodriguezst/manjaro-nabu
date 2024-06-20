@@ -38,7 +38,7 @@ jobs:
       -
         name: Image customizations for nabu
         run: |
-          sudo apt update && sudo apt install fdisk
+          sudo apt update && sudo apt install fdisk qemu-system binfmt-support qemu-user-static
           sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
       -
         name: Release assets
