@@ -35,6 +35,10 @@ jobs:
           #gpg-key: ${{ secrets.CI_GPG_SECRET }}
           #gpg-passphrase: ${{ secrets.CI_GPG_PASSPHRASE }}
       -
+        name: Image customizations for nabu
+        run: |
+          sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
+      -
         name: Release assets
         uses: softprops/action-gh-release@v0.1.15
         env:
@@ -46,7 +50,7 @@ jobs:
           prerelease: true
           files: |
             ${{ env.FILE_PATH }}
-            ${{ env.FILE_SHA256 }}
-            ${{ env.FILE_TORRENT }}
-            ${{ env.FILE_PKG }}
+            #${{ env.FILE_SHA256 }}
+            #${{ env.FILE_TORRENT }}
+            #${{ env.FILE_PKG }}
             #${{ env.FILE_SIG }}
