@@ -14,10 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        DEVICE: [generic, generic-efi]
+        DEVICE: [generic-efi]
         EDITION: [gnome,gnome-mobile,kde-plasma,plasma-mobile,phosh,minimal]
         BRANCH: [unstable]
     steps:
+      - uses: actions/checkout@v4
       -
         id: time
         uses: boredland/get-time-action@2.0.0
@@ -37,6 +38,7 @@ jobs:
       -
         name: Image customizations for nabu
         run: |
+          sudo apt update && sudo apt install fdisk
           sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
       -
         name: Release assets
