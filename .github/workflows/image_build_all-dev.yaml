@@ -12,6 +12,7 @@ jobs:
   release:
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         DEVICE: [generic, generic-efi]
         EDITION: [gnome,gnome-mobile,kde-plasma,plasma-mobile,phosh,minimal]
