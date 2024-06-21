@@ -50,3 +50,6 @@ fi
 # Unmount the rootfs directory and remove it
 umount -R rootfs
 rm -rf rootfs
+
+# Extract partitions from disk image
+./scripts/image_extract.sh $IMG_FILE
