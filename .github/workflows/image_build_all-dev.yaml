@@ -42,11 +42,13 @@ jobs:
         uses: actions/upload-artifact@v4.0.0
         with:
           # Artifact name
-          name: kernel.tar.gz
+          name: built_kernel
           path: ${{ github.workspace }}/kernel.tar.gz
 
   release:
+    name: Build RootFS Image
     runs-on: ubuntu-22.04
+    needs: kernel
     strategy:
       fail-fast: false
       matrix:
@@ -60,6 +62,16 @@ jobs:
         uses: boredland/get-time-action@2.0.0
         with:
           format: 'YYYYMMDD'
+      - 
+        uses: actions/download-artifact@v4
+        with:
+          pattern: built_kernel
+      - 
+        name: Unpack built kernel
+        shell: bash
+        run: |
+          cd overlay && tar zxvf ../built_kernel/kernel.tar.gz && cd ../
+          find overlay
       -
         id: image-build
         uses: manjaro-arm/rootfs@master
