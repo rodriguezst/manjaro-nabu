@@ -9,6 +9,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  kernel:
+    name: Build kernel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'rodriguezst/linux'
+          ref: 'v6.1.10-nabu-maverickjb'
+          fetch-depth: '1'
+
+      - name: Install Dependencies
+        run: sudo apt update && sudo apt install build-essential gcc-aarch64-linux-gnu bc flex bison 7zip kmod bash cpio binutils tar git wget dpkg libssl-dev
+
+      - name: Build kernel
+        run: |
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- xiaomi_nabu_maverick_defconfig
+          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image.gz dtbs
+          mkdir -p ./install/boot
+          _kernel_version="$(make kernelrelease -s)"
+          cp arch/arm64/boot/Image.gz ./install/boot/vmlinuz-$_kernel_version
+          cp arch/arm64/boot/dts/qcom/sm8150-xiaomi-nabu-maverick.dtb ./install/boot/dtb-$_kernel_version.dtb
+          make ARCH=arm64 install INSTALL_PATH=./install/boot
+          make ARCH=arm64 dtbs_install INSTALL_DTBS_PATH=./install/boot/dtbs
+          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules
+          make ARCH=arm64 modules_install INSTALL_MOD_PATH=./install
+          mkdir -p ./install/usr/ && mv ./install/lib ./install/usr/lib
+          cd ./install && tar zcvf ../kernel.tar.gz . && cd ..
+
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          # Artifact name
+          name: kernel.tar.gz
+          path: ${{ github.workspace }}/kernel.tar.gz
+
   release:
     runs-on: ubuntu-22.04
     strategy:
