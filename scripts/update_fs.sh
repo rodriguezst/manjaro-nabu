@@ -14,7 +14,7 @@ if [[ !  $(uname -m | grep -q aarch64) ]]; then
   #ldconfig.real abi=linux type=dynamic
   echo ':aarch64ld:M::\x7fELF\x02\x01\x01\x03\x00\x00\x00\x00\x00\x00\x00\x00\x03\x00\xb7:\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff:/qemu-aarch64-static:' | tee /proc/sys/fs/binfmt_misc/register
 fi
-chroot rootfs pacman -R linux61
+chroot rootfs pacman --noconfirm -R linux61
 rsync -a overlay/ rootfs/
 # update-initramfs
 # update-grub
