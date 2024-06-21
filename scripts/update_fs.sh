@@ -1,6 +1,12 @@
 #!/bin/bash
 
-IMG_FILE="$1"
+# Check if an .img file and a target directory are provided as arguments
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <image_file.img>"
+  exit 1
+fi
+
+IMG_FILE=$1
 
 # Check if IMG_FILE ends with .xz (compressed file extension)
 if [[ "$IMG_FILE" == *.xz ]]; then
