@@ -51,9 +51,5 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            *-rootfs.img
+            *-rootfs.img.xz
             ${{ env.FILE_PATH }}
-            #${{ env.FILE_SHA256 }}
-            #${{ env.FILE_TORRENT }}
-            #${{ env.FILE_PKG }}
-            #${{ env.FILE_SIG }}
