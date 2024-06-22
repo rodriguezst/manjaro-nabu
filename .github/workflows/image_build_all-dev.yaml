@@ -100,4 +100,4 @@ jobs:
           prerelease: true
           files: |
             *-rootfs.img.xz
-            ${{ env.FILE_PATH }}
+            *-esp.img.xz
