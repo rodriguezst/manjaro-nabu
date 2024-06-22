@@ -20,7 +20,7 @@ fi
 ./scripts/image_mount.sh $IMG_FILE rootfs
 
 # Check if the system architecture is not aarch64 (ARM 64-bit)
-if [[ ! $(uname -m | grep -q aarch64) ]]; then
+if ! uname -m | grep -q aarch64; then
   # Download the QEMU user static binary for aarch64 emulation
   wget https://github.com/multiarch/qemu-user-static/releases/download/v7.2.0-1/qemu-aarch64-static
   # Install the QEMU binary to the rootfs directory with appropriate permissions
@@ -44,7 +44,7 @@ rsync -a overlay/ rootfs/
 # chroot rootfs update-grub
 
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
-if [[ ! $(uname -m | grep -q aarch64) ]]; then
+if ! uname -m | grep -q aarch64; then
   # Unregister the aarch64 binfmt_misc handlers
   echo -1 | tee /proc/sys/fs/binfmt_misc/aarch64
   echo -1 | tee /proc/sys/fs/binfmt_misc/aarch64ld
