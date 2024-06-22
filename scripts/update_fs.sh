@@ -36,6 +36,12 @@ fi
 # Enter the chroot environment and remove the linux61 package using pacman
 chroot rootfs pacman --noconfirm -R linux61
 
+# Install packages
+chroot rootfs pacman-key --init
+chroot rootfs pacman-key --populate archlinuxarm manjaro manjaro-arm
+chroot rootfs pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogressbar
+
+
 # Add files from the overlay directory to the rootfs directory
 rsync -a overlay/ rootfs/
 
