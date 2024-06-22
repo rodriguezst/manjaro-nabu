@@ -30,7 +30,7 @@ jobs:
           mkdir -p ./install/boot
           _kernel_version="$(make kernelrelease -s)"
           cp arch/arm64/boot/Image.gz ./install/boot/vmlinuz-$_kernel_version
-          cp arch/arm64/boot/dts/qcom/sm8150-xiaomi-nabu-maverick.dtb ./install/boot/dtb-$_kernel_version.dtb
+          cp arch/arm64/boot/dts/qcom/sm8150-xiaomi-nabu-maverick.dtb ./install/boot/dtb-$_kernel_version
           make ARCH=arm64 install INSTALL_PATH=./install/boot
           make ARCH=arm64 dtbs_install INSTALL_DTBS_PATH=./install/boot/dtbs
           make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules
