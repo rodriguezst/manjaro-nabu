@@ -39,9 +39,107 @@ chroot rootfs pacman --noconfirm -R linux61
 # Add files from the overlay directory to the rootfs directory
 rsync -a overlay/ rootfs/
 
-# TODO: update initramfs and grub configuration
-# chroot rootfs update-initramfs
-# chroot rootfs update-grub
+# Regenerate initramfs and grub configuration
+INSTALLED_KERNEL=$(ls overlay/usr/lib/modules/)
+chroot rootfs mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
+#chroot rootfs grub-mkconfig -o /boot/grub/grub.cfg
+KERNEL="/boot/vmlinuz-$INSTALLED_KERNEL"
+DEVICETREE="/boot/dtb-$INSTALLED_KERNEL"
+INITRAMFS="/boot/initramfs-linux.img"
+echo '### BEGIN /etc/grub.d/00_header ###
+insmod part_gpt
+insmod part_msdos
+if [ -s $prefix/grubenv ]; then
+  load_env
+fi
+if [ "${next_entry}" ] ; then
+   set default="${next_entry}"
+   set next_entry=
+   save_env next_entry
+   set boot_once=true
+else
+   set default="${saved_entry}"
+fi
+
+if [ x"${feature_menuentry_id}" = xy ]; then
+  menuentry_id_option="--id"
+else
+  menuentry_id_option=""
+fi
+
+export menuentry_id_option
+
+if [ "${prev_saved_entry}" ]; then
+  set saved_entry="${prev_saved_entry}"
+  save_env saved_entry
+  set prev_saved_entry=
+  save_env prev_saved_entry
+  set boot_once=true
+fi
+
+function savedefault {
+  if [ -z "${boot_once}" ]; then
+    saved_entry="${chosen}"
+    save_env saved_entry
+  fi
+}
+
+function load_video {
+  if [ x$feature_all_video_module = xy ]; then
+    insmod all_video
+  else
+    insmod efi_gop
+    insmod efi_uga
+    insmod ieee1275_fb
+    insmod vbe
+    insmod vga
+    insmod video_bochs
+    insmod video_cirrus
+  fi
+}
+
+set menu_color_normal=white/black
+set menu_color_highlight=green/black
+
+if [ x$feature_default_font_path = xy ] ; then
+   font=unicode
+else
+insmod part_gpt
+insmod ext2
+search --no-floppy --label --set=root linux
+    font="/usr/share/grub/unicode.pf2"
+fi
+
+if loadfont $font ; then
+  set gfxmode=auto
+  load_video
+  insmod gfxterm
+fi
+terminal_input console
+terminal_output gfxterm
+if [ x$feature_timeout_style = xy ] ; then
+  set timeout_style=menu
+  set timeout=5
+# Fallback normal timeout code in case the timeout_style feature is
+# unavailable.
+else
+  set timeout=5
+fi
+### END /etc/grub.d/00_header ###' > rootfs/boot/grub/grub.cfg
+
+echo "### BEGIN /etc/grub.d/10_linux ###
+menuentry 'Manjaro ARM Setup' --class manjaro --class gnu-linux --class gnu --class os \$menuentry_id_option 'gnulinux-simple-linux' {
+        savedefault
+        load_video
+        set gfxpayload=keep
+        insmod gzio
+        insmod part_gpt
+        insmod ext2
+        search --no-floppy --label --set=root linux
+        linux   $KERNEL root=PARTLABEL=linux rw quiet splash plymouth.ignore-serial-consoles
+        initrd  $INITRAMFS
+        devicetree      $DEVICETREE
+}" >> rootfs/boot/grub/grub.cfg
 
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
 if ! uname -m | grep -q aarch64; then
