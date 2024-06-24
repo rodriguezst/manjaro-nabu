@@ -3,4 +3,4 @@
 
 # <file system> <dir> <type> <options> <dump> <pass>
 PARTLABEL=esp  /boot/efi   vfat    defaults,noexec,nodev,showexec     0   0
-PARTLABEL=linux   /   ext4     defaults,errors=remount-ro,x-systemd.growfs    0   1
+PARTLABEL=linux   /   ext4     defaults,errors=remount-ro    0   1
