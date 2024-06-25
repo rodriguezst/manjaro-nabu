@@ -90,12 +90,13 @@ jobs:
           sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
       -
         name: Release assets
-        uses: softprops/action-gh-release@v0.1.15
+        uses: softprops/action-gh-release@v2.0.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.time.outputs.time }}
+          tag_name: ${{ steps.time.outputs.time }}-${{ github.run_id }}
           name: Release ${{ steps.time.outputs.time }}
+          body: See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           draft: false
           prerelease: false
           files: |
