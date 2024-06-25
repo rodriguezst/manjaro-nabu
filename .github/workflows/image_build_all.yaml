@@ -1,4 +1,4 @@
-name: image_build_all-dev
+name: image_build_all
 on:
   workflow_dispatch:
 #  schedule:
