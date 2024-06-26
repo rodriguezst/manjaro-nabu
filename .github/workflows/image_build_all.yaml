@@ -8,6 +8,15 @@ concurrency:
   group: ${{ github.repository }}-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  KERNEL_REPO: 'rodriguezst/linux'
+  KERNEL_REF: 'v6.1.10-nabu-maverickjb'
+  KERNEL_DEFCONFIG: 'xiaomi_nabu_maverick_defconfig'
+  KERNEL_DTB_NAME: 'sm8150-xiaomi-nabu-maverick.dtb'
+  # KERNEL_VERSION is set at "kernel" job
+  QBOOTCTL_REPO: 'rodriguezst/qbootctl'
+  QBOOTCTL_REF: 'main'
+
 jobs:
   kernel:
     name: Build kernel
@@ -16,8 +25,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: 'rodriguezst/linux'
-          ref: 'v6.1.10-nabu-maverickjb'
+          repository: ${{ env.KERNEL_REPO }}
+          ref: ${{ env.KERNEL_REF }}
           fetch-depth: '1'
 
       - name: Install Dependencies
@@ -25,18 +34,19 @@ jobs:
 
       - name: Build kernel
         run: |
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- xiaomi_nabu_maverick_defconfig
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- $KERNEL_DEFCONFIG
           make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image.gz dtbs
           mkdir -p ./install/boot
           _kernel_version="$(make kernelrelease -s)"
           cp arch/arm64/boot/Image.gz ./install/boot/vmlinuz-$_kernel_version
-          cp arch/arm64/boot/dts/qcom/sm8150-xiaomi-nabu-maverick.dtb ./install/boot/dtb-$_kernel_version
+          cp arch/arm64/boot/dts/qcom/$KERNEL_DTB_NAME ./install/boot/dtb-$_kernel_version
           make ARCH=arm64 install INSTALL_PATH=./install/boot
           make ARCH=arm64 dtbs_install INSTALL_DTBS_PATH=./install/boot/dtbs
           make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules
           make ARCH=arm64 modules_install INSTALL_MOD_PATH=./install
           mkdir -p ./install/usr/ && mv ./install/lib ./install/usr/lib
           cd ./install && tar zcvf ../kernel.tar.gz . && cd ..
+          echo "KERNEL_VERSION=$_kernel_version" >> $GITHUB_ENV
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4.0.0
@@ -44,11 +54,64 @@ jobs:
           # Artifact name
           name: built_kernel
           path: ${{ github.workspace }}/kernel.tar.gz
+  
+  qbootctl:
+    name: Build qbootctl
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kernel repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KERNEL_REPO }}
+          ref: ${{ env.KERNEL_REF }}
+          path: kernel
+          fetch-depth: '1'
+      - name: Checkout qbootctl repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.QBOOTCTL_REPO }}
+          ref: ${{ env.QBOOTCTL_REF }}
+          path: qbootctl
+          fetch-depth: '1'
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: Write script for docker
+        run: |
+          echo "#!/bin/bash" > run-in-docker.sh
+          echo "export DEBIAN_FRONTEND=noninteractive" >> run-in-docker.sh
+          echo "apt update" >> run-in-docker.sh
+          echo "apt -y install make rsync zlib1g-dev meson cmake" >> run-in-docker.sh
+          echo "cd kernel" >> run-in-docker.sh
+          echo "make headers_install" >> run-in-docker.sh
+          echo "cd ../qbootctl" >> run-in-docker.sh
+          echo "meson build" >> run-in-docker.sh
+          echo "meson compile -C build" >> run-in-docker.sh
+          chmod +x run-in-docker.sh
+
+      - name: Run in Docker
+        run: |
+          docker run \
+            --rm \
+            -v $(pwd):/${{ github.workspace }} \
+            -w ${{ github.workspace }} \
+            --platform linux/arm64 \
+            ubuntu:latest \
+            bash run-in-docker.sh
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4.0.0
+        with:
+          # Artifact name
+          name: built_qbootctl
+          path: ${{ github.workspace }}/qbootctl/build/qbootctl
 
   release:
     name: Build RootFS Image
     runs-on: ubuntu-22.04
-    needs: kernel
+    needs: [kernel, qbootctl]
     strategy:
       fail-fast: false
       matrix:
@@ -67,10 +130,16 @@ jobs:
         with:
           pattern: built_kernel
       - 
-        name: Unpack built kernel
+        uses: actions/download-artifact@v4
+        with:
+          pattern: built_qbootctl
+      - 
+        name: Unpack built kernel and install qbootctl
         shell: bash
         run: |
           cd overlay && tar zxvf ../built_kernel/kernel.tar.gz && cd ../
+          mkdir -p overlay/usr/local/bin
+          cp built_qbootctl/qbootctl overlay/usr/local/bin
           find overlay
       -
         id: image-build
@@ -86,7 +155,7 @@ jobs:
       -
         name: Image customizations for nabu
         run: |
-          sudo apt update && sudo apt install fdisk qemu-system binfmt-support qemu-user-static
+          sudo apt update && sudo apt install fdisk
           sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
       -
         name: Release assets
