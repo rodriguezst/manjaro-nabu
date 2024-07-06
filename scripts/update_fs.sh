@@ -40,7 +40,7 @@ chroot rootfs pacman --noconfirm -R linux61
 chroot rootfs pacman-key --init
 chroot rootfs pacman-key --populate archlinuxarm manjaro manjaro-arm
 chroot rootfs pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogressbar
-
+chroot rootfs systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
 
 # Add files from the overlay directory to the rootfs directory
 rsync -a overlay/ rootfs/
