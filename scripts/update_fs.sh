@@ -1,5 +1,7 @@
 #!/bin/bash
 
+ROOTFS_DIR=rootfs
+
 # Check if an .img file and a target directory are provided as arguments
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <image_file.img>"
@@ -17,14 +19,14 @@ if [[ "$IMG_FILE" == *.xz ]]; then
 fi
 
 # Mount the image file to the rootfs directory using the image_mount.sh script
-./scripts/image_mount.sh $IMG_FILE rootfs
+./scripts/image_mount.sh $IMG_FILE $ROOTFS_DIR
 
 # Check if the system architecture is not aarch64 (ARM 64-bit)
 if ! uname -m | grep -q aarch64; then
   # Download the QEMU user static binary for aarch64 emulation
   wget --no-verbose https://github.com/multiarch/qemu-user-static/releases/download/v7.2.0-1/qemu-aarch64-static
   # Install the QEMU binary to the rootfs directory with appropriate permissions
-  install -m755 qemu-aarch64-static rootfs/
+  install -m755 qemu-aarch64-static $ROOTFS_DIR/
 
   # Register the QEMU binary with binfmt_misc to handle aarch64 binaries
   echo ':aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7:\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff:/qemu-aarch64-static:' | tee /proc/sys/fs/binfmt_misc/register > /dev/null
@@ -34,21 +36,21 @@ if ! uname -m | grep -q aarch64; then
 fi
 
 # Enter the chroot environment and remove the linux61 package using pacman
-chroot rootfs pacman --noconfirm -R linux61
+chroot $ROOTFS_DIR pacman --noconfirm -R linux61
 
 # Install packages
-chroot rootfs pacman-key --init
-chroot rootfs pacman-key --populate archlinuxarm manjaro manjaro-arm
-chroot rootfs pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogressbar
-chroot rootfs systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
+chroot $ROOTFS_DIR pacman-key --init
+chroot $ROOTFS_DIR pacman-key --populate archlinuxarm manjaro manjaro-arm
+chroot $ROOTFS_DIR pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogressbar
+chroot $ROOTFS_DIR systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
 
 # Add files from the overlay directory to the rootfs directory
-rsync -a overlay/ rootfs/
+rsync -a overlay/ $ROOTFS_DIR/
 
 # Regenerate initramfs and grub configuration
 INSTALLED_KERNEL=$(ls overlay/usr/lib/modules/)
-chroot rootfs mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
-#chroot rootfs grub-mkconfig -o /boot/grub/grub.cfg
+chroot $ROOTFS_DIR mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
+#chroot $ROOTFS_DIR grub-mkconfig -o /boot/grub/grub.cfg
 KERNEL="/boot/vmlinuz-$INSTALLED_KERNEL"
 DEVICETREE="/boot/dtb-$INSTALLED_KERNEL"
 INITRAMFS="/boot/initramfs-linux.img"
@@ -131,7 +133,7 @@ if [ x$feature_timeout_style = xy ] ; then
 else
   set timeout=5
 fi
-### END /etc/grub.d/00_header ###' > rootfs/boot/grub/grub.cfg
+### END /etc/grub.d/00_header ###' > $ROOTFS_DIR/boot/grub/grub.cfg
 
 echo "### BEGIN /etc/grub.d/10_linux ###
 menuentry 'Manjaro ARM Setup' --class manjaro --class gnu-linux --class gnu --class os \$menuentry_id_option 'gnulinux-simple-linux' {
@@ -145,7 +147,7 @@ menuentry 'Manjaro ARM Setup' --class manjaro --class gnu-linux --class gnu --cl
         linux   $KERNEL root=PARTLABEL=linux rw quiet splash plymouth.ignore-serial-consoles
         initrd  $INITRAMFS
         devicetree      $DEVICETREE
-}" >> rootfs/boot/grub/grub.cfg
+}" >> $ROOTFS_DIR/boot/grub/grub.cfg
 
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
 if ! uname -m | grep -q aarch64; then
@@ -153,13 +155,13 @@ if ! uname -m | grep -q aarch64; then
   echo -1 | tee /proc/sys/fs/binfmt_misc/aarch64 > /dev/null
   echo -1 | tee /proc/sys/fs/binfmt_misc/aarch64ld > /dev/null
   # Remove the QEMU binary from the rootfs and current directories
-  rm rootfs/qemu-aarch64-static
+  rm $ROOTFS_DIR/qemu-aarch64-static
   rm qemu-aarch64-static
 fi
 
 # Unmount the rootfs directory and remove it
-./scripts/image_umount.sh rootfs
-rm -d rootfs
+./scripts/image_umount.sh $ROOTFS_DIR
+rm -d $ROOTFS_DIR
 
 # Extract partitions from disk image
 ./scripts/image_extract.sh $IMG_FILE
