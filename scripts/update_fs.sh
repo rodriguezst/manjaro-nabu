@@ -158,11 +158,7 @@ if ! uname -m | grep -q aarch64; then
 fi
 
 # Unmount the rootfs directory and remove it
-umount rootfs/dev/pts
-umount rootfs/dev
-umount rootfs/proc
-umount rootfs/sys
-umount -R rootfs
+./scripts/image_umount.sh rootfs
 rm -d rootfs
 
 # Extract partitions from disk image
