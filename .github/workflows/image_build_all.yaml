@@ -140,6 +140,7 @@ jobs:
           cd overlay && tar zxvf ../built_kernel/kernel.tar.gz && cd ../
           mkdir -p overlay/usr/local/bin
           cp built_qbootctl/qbootctl overlay/usr/local/bin
+          chmod +x overlay/usr/local/bin/qbootctl
           find overlay
       -
         id: image-build
