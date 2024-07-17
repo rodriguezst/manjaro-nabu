@@ -189,6 +189,7 @@ jobs:
         run: |
           echo "The following Manjaro editions were successfuly built:" > ${{ github.workspace }}/RELEASE.md
           cd ./artifacts && ls -1 . >> ${{ github.workspace }}/RELEASE.md && cd ../
+          sed -i 's/^image-/* /' ${{ github.workspace }}/RELEASE.md
           echo "**Build Log**: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> ${{ github.workspace }}/RELEASE.md
       -
         name: Make release
