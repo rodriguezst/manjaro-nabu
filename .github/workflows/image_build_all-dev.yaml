@@ -10,7 +10,7 @@ concurrency:
 
 env:
   KERNEL_REPO: 'rodriguezst/linux'
-  KERNEL_REF: 'v6.1.10-nabu'
+  KERNEL_REF: 'v6.1.98-nabu'
   KERNEL_DEFCONFIG: 'xiaomi_nabu_maverick_defconfig'
   KERNEL_DTB_NAME: 'sm8150-xiaomi-nabu-maverick.dtb'
   # KERNEL_VERSION is set at "kernel" job
