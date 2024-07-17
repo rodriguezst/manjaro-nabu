@@ -148,6 +148,7 @@ menuentry 'Manjaro ARM Setup' --class manjaro --class gnu-linux --class gnu --cl
         initrd  $INITRAMFS
         devicetree      $DEVICETREE
 }" >> $ROOTFS_DIR/boot/grub/grub.cfg
+chroot $ROOTFS_DIR grub-install
 
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
 if ! uname -m | grep -q aarch64; then
