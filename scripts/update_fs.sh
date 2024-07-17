@@ -144,7 +144,7 @@ menuentry 'Manjaro ARM Setup' --class manjaro --class gnu-linux --class gnu --cl
         insmod part_gpt
         insmod ext2
         search --no-floppy --label --set=root linux
-        linux   $KERNEL root=PARTLABEL=linux rw quiet splash plymouth.ignore-serial-consoles
+        linux   $KERNEL root=PARTLABEL=linux rw console=tty0 selinux=0 rootwait quiet splash plymouth.ignore-serial-consoles
         initrd  $INITRAMFS
         devicetree      $DEVICETREE
 }" >> $ROOTFS_DIR/boot/grub/grub.cfg
