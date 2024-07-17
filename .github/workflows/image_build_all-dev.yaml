@@ -1,4 +1,4 @@
-name: image_build_all-dev
+name: build-manjaro-unstable
 on:
   workflow_dispatch:
 #  schedule:
@@ -49,7 +49,7 @@ jobs:
           echo "KERNEL_VERSION=$_kernel_version" >> $GITHUB_ENV
 
       - name: Upload built artifacts
-        uses: actions/upload-artifact@v4.0.0
+        uses: actions/upload-artifact@v4
         with:
           # Artifact name
           name: built_kernel
@@ -102,21 +102,22 @@ jobs:
             ubuntu:latest \
             bash run-in-docker.sh
       - name: Upload built artifacts
-        uses: actions/upload-artifact@v4.0.0
+        uses: actions/upload-artifact@v4
         with:
           # Artifact name
           name: built_qbootctl
           path: ${{ github.workspace }}/qbootctl/build/qbootctl
 
-  release:
+  rootfs:
     name: Build RootFS Image
     runs-on: ubuntu-22.04
     needs: [kernel, qbootctl]
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         DEVICE: [generic-efi]
-        EDITION: [gnome,gnome-mobile,kde-plasma,plasma-mobile,phosh,minimal]
+        EDITION: [gnome,gnome-mobile,gnome-mobile-dev,kde-plasma,plasma-mobile,plasma-mobile-dev,phosh,mate,xfce,lomiri,maui-shell,minimal]
         BRANCH: [unstable]
     steps:
       - uses: actions/checkout@v4
@@ -159,16 +160,46 @@ jobs:
           sudo apt update && sudo apt install fdisk
           sudo ./scripts/update_fs.sh ${{ env.FILE_PATH }}
       -
-        name: Release assets
+        name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          # Artifact name
+          name: image-${{ matrix.DEVICE }}-${{ matrix.EDITION }}
+          path: |
+            *-rootfs.img.xz
+            *-esp.img.xz
+  release:
+    name: Release
+    runs-on: ubuntu-22.04
+    needs: rootfs
+    steps:
+      -
+        id: time
+        uses: boredland/get-time-action@2.0.0
+        with:
+          format: 'YYYYMMDD'
+      - name: Download image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'image-*'
+          path: ./artifacts
+
+      - name: Write release body
+        run: |
+          echo "The following Manjaro editions were successfuly built:" > ${{ github.workspace }}/RELEASE.md
+          cd ./artifacts && ls -1 . >> ${{ github.workspace }}/RELEASE.md && cd ../
+          echo "**Build Log**: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> ${{ github.workspace }}/RELEASE.md
+      -
+        name: Make release
         uses: softprops/action-gh-release@v2.0.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.time.outputs.time }}-${{ github.run_id }}
-          name: Dev ${{ steps.time.outputs.time }}
-          body: See https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          body_path: ${{ github.workspace }}/RELEASE.md
+          name: Manjaro ARM Unstable ${{ steps.time.outputs.time }}
           draft: false
           prerelease: true
           files: |
-            *-rootfs.img.xz
-            *-esp.img.xz
+            artifacts/**/*.xz
