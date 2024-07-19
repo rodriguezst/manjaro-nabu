@@ -1,7 +1,7 @@
 # Manjaro ARM for Xiaomi Pad 5
-[![stable-build](https://github.com/rodriguezst/manjaro-nabu/workflows/image_build_all/badge.svg)](https://github.com/rodriguezst/manjaro-nabu/actions)
+[![stable-build](https://github.com/rodriguezst/manjaro-nabu/workflows/build-manjaro-stable/badge.svg)](https://github.com/rodriguezst/manjaro-nabu/actions)
 
-[![unstable-build](https://github.com/rodriguezst/manjaro-nabu/workflows/image_build_all-dev/badge.svg)](https://github.com/rodriguezst/manjaro-nabu/actions)
+[![unstable-build](https://github.com/rodriguezst/manjaro-nabu/workflows/build-manjaro-unstable/badge.svg)](https://github.com/rodriguezst/manjaro-nabu/actions)
 
 ## Description
 

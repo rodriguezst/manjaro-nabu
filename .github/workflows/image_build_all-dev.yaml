@@ -189,17 +189,17 @@ jobs:
         run: |
           echo "The following Manjaro editions were successfuly built:" > ${{ github.workspace }}/RELEASE.md
           cd ./artifacts && ls -1 . >> ${{ github.workspace }}/RELEASE.md && cd ../
+          sed -i 's/^image-/* /' ${{ github.workspace }}/RELEASE.md
           echo "**Build Log**: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> ${{ github.workspace }}/RELEASE.md
-      -
+      - 
         name: Make release
-        uses: softprops/action-gh-release@v2.0.6
+        uses: ncipollo/release-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.time.outputs.time }}-${{ github.run_id }}
-          body_path: ${{ github.workspace }}/RELEASE.md
-          name: Manjaro ARM Unstable ${{ steps.time.outputs.time }}
+          tag: ${{ steps.time.outputs.time }}-unstable-${{ github.run_id }}
+          name: Manjaro ARM Unstable (${{ steps.time.outputs.time }})
+          bodyFile: ${{ github.workspace }}/RELEASE.md
           draft: false
           prerelease: true
-          files: |
-            artifacts/**/*.xz
+          artifacts: artifacts/**/*.xz
