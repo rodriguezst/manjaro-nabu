@@ -1,0 +1,13 @@
+[Unit]
+Description=Set MAC address for wlan0 based on machine-id
+Before=network.target
+ConditionPathExists=/etc/machine-id
+ConditionPathExists=!/etc/systemd/network/10-wlan0.network
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/systemd/create-wlan0-network-file.sh
+SyslogIdentifier=config-wlan0-mac
+
+[Install]
+WantedBy=network.target

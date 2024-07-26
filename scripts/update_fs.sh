@@ -45,7 +45,7 @@ chroot $ROOTFS_DIR pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogre
 chroot $ROOTFS_DIR systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
 
 # Add files from the overlay directory to the rootfs directory
-rsync -a overlay/ $ROOTFS_DIR/
+rsync -a --chown=root:root overlay/ $ROOTFS_DIR/
 
 # Regenerate initramfs and build UKI image for EFI booting
 INSTALLED_KERNEL=$(ls overlay/usr/lib/modules/)
