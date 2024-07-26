@@ -47,6 +47,9 @@ chroot $ROOTFS_DIR systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
 # Add files from the overlay directory to the rootfs directory
 rsync -a --chown=root:root overlay/ $ROOTFS_DIR/
 
+# Enable services from overlay
+chroot $ROOTFS_DIR systemctl enable qbootctl config-wlan0-mac
+
 # Regenerate initramfs and build UKI image for EFI booting
 INSTALLED_KERNEL=$(ls overlay/usr/lib/modules/)
 chroot $ROOTFS_DIR mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
