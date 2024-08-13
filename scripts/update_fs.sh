@@ -3,12 +3,13 @@
 ROOTFS_DIR=rootfs
 
 # Check if an .img file and a target directory are provided as arguments
-if [ $# -ne 1 ]; then
-  echo "Usage: $0 <image_file.img>"
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <image_file.img> [edition]"
   exit 1
 fi
 
 IMG_FILE=$1
+EDITION=$2
 
 # Check if IMG_FILE ends with .xz (compressed file extension)
 if [[ "$IMG_FILE" == *.xz ]]; then
@@ -69,6 +70,14 @@ chroot $ROOTFS_DIR ukify build  \
               --uname=$INSTALLED_KERNEL \
               --output="/boot/efi/EFI/manjaro/grubaa64.efi"
 rm -rf "$ROOTFS_DIR/boot/Image-$INSTALLED_KERNEL"
+
+case "$EDITION" in
+  kde-plasma)
+    echo "Setting initial screen orientation for $EDITION"
+    cp "./misc/kwinoutputconfig.json" "$ROOTFS_DIR/home/oem/.config/kwinoutputconfig.json"
+    ;;
+esac
+
 
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
 if ! uname -m | grep -q aarch64; then

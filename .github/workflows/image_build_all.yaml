@@ -160,7 +160,7 @@ jobs:
           sudo apt update && sudo apt install fdisk
           NEW_PATH=$(echo ${{ env.FILE_PATH }} | sed 's/${{ matrix.DEVICE }}/nabu/')
           mv ${{ env.FILE_PATH }} $NEW_PATH
-          sudo ./scripts/update_fs.sh $NEW_PATH
+          sudo ./scripts/update_fs.sh $NEW_PATH ${{ matrix.EDITION }}
       -
         name: Upload built artifacts
         uses: actions/upload-artifact@v4
