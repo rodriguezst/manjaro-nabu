@@ -73,8 +73,11 @@ rm -rf "$ROOTFS_DIR/boot/Image-$INSTALLED_KERNEL"
 
 case "$EDITION" in
   kde-plasma)
-    echo "Setting initial screen orientation for $EDITION"
+    echo ":: Applying custom tweaks for $EDITION"
+    # Initial screen orientation needed for calamares to work
     cp "./misc/kwinoutputconfig.json" "$ROOTFS_DIR/home/oem/.config/kwinoutputconfig.json"
+    # Install virtual keyboard
+    chroot $ROOTFS_DIR pacman -Syyu maliit-framework maliit-keyboard --noconfirm --noprogressbar
     ;;
 esac
 
