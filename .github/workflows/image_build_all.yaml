@@ -145,13 +145,14 @@ jobs:
           find overlay
       -
         id: image-build
-        uses: manjaro-arm/rootfs@master
+        uses: rodriguezst/manjaro-rootfs@master
         with:
           device: ${{ matrix.device }}
           edition: ${{ matrix.edition }}
           branch: ${{ matrix.branch }}
           version: ${{ matrix.branch }}-${{ steps.time.outputs.time }}
           arm-profiles-repo: 'https://github.com/rodriguezst/manjaro-arm-profiles'
+          pkgdir: "${{ github.workspace }}/packages"
           #gpg-key: ${{ secrets.CI_GPG_SECRET }}
           #gpg-passphrase: ${{ secrets.CI_GPG_PASSPHRASE }}
       -
