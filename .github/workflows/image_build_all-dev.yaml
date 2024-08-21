@@ -126,7 +126,7 @@ jobs:
           branch: ${{ matrix.branch }}
           version: ${{ matrix.branch }}-${{ steps.time.outputs.time }}
           arm-profiles-repo: 'https://github.com/rodriguezst/manjaro-arm-profiles'
-          pkgdir: "${{ github.workspace }}/packages"
+          pkgdir: "packages"
           hostname: "nabu"
           #gpg-key: ${{ secrets.CI_GPG_SECRET }}
           #gpg-passphrase: ${{ secrets.CI_GPG_PASSPHRASE }}
