@@ -42,17 +42,12 @@ chroot $ROOTFS_DIR pacman --noconfirm -R linux61
 # Install packages
 chroot $ROOTFS_DIR pacman-key --init
 chroot $ROOTFS_DIR pacman-key --populate archlinuxarm manjaro manjaro-arm
-chroot $ROOTFS_DIR pacman -Syyu rmtfs pd-mapper tqftpserv --noconfirm --noprogressbar
-chroot $ROOTFS_DIR systemctl enable qrtr-ns pd-mapper tqftpserv rmtfs
 
 # Add files from the overlay directory to the rootfs directory
 rsync -a --chown=root:root overlay/ $ROOTFS_DIR/
 
-# Enable services from overlay
-chroot $ROOTFS_DIR systemctl enable qbootctl config-wlan0-mac
-
 # Regenerate initramfs and build UKI image for EFI booting
-INSTALLED_KERNEL=$(ls overlay/usr/lib/modules/)
+INSTALLED_KERNEL=$(ls $ROOTFS_DIR/usr/lib/modules/)
 chroot $ROOTFS_DIR mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
 KERNEL="/boot/vmlinuz-$INSTALLED_KERNEL"
 DEVICETREE="/boot/dtb-$INSTALLED_KERNEL"

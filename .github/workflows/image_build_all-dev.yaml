@@ -13,10 +13,14 @@ env:
   KERNEL_REF: 'linux61-nabu'
   QBOOTCTL_REPO: 'rodriguezst/qbootctl-pkgbuild'
   QBOOTCTL_REF: 'main'
+  FIRMWARE_REPO: 'rodriguezst/firmware-nabu-pkgbuild'
+  FIRMWARE_REF: 'master'
+  TWEAKS_REPO: 'rodriguezst/manjaro-nabu-tweaks'
+  TWEAKS_REF: 'master'
 
 jobs:
   kernel:
-    name: Build kernel
+    name: Makepkg kernel
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -46,7 +50,7 @@ jobs:
           path: ${{ github.workspace }}/artifacts/*
   
   qbootctl:
-    name: Build qbootctl
+    name: Makepkg qbootctl
     runs-on: ubuntu-latest
     steps:
       - name: Checkout qbootctl repo
@@ -69,10 +73,58 @@ jobs:
           name: pkg-qbootctl
           path: ${{ github.workspace }}/artifacts/*
 
+  firmware:
+    name: Makepkg firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout firmware-nabu repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FIRMWARE_REPO }}
+          ref: ${{ env.FIRMWARE_REF }}
+          path: firmware
+          fetch-depth: '1'
+      -
+        name: buildarmpkg
+        uses: rodriguezst/manjaro-buildarmpkg-action@main
+        with:
+          pkgbuild-dir: ./firmware
+          output-dir: ./artifacts
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: pkg-firmware
+          path: ${{ github.workspace }}/artifacts/*
+
+  nabu-tweaks:
+    name: Makepkg nabu-tweaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout nabu-tweaks repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TWEAKS_REPO }}
+          ref: ${{ env.TWEAKS_REF }}
+          path: tweaks
+          fetch-depth: '1'
+      -
+        name: buildarmpkg
+        uses: rodriguezst/manjaro-buildarmpkg-action@main
+        with:
+          pkgbuild-dir: ./tweaks
+          output-dir: ./artifacts
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: pkg-tweaks
+          path: ${{ github.workspace }}/artifacts/*
+
   rootfs:
     name: Build RootFS Image
     runs-on: ubuntu-22.04
-    needs: [kernel, qbootctl]
+    needs: [kernel, qbootctl, firmware, nabu-tweaks]
     continue-on-error: true
     strategy:
       fail-fast: false
