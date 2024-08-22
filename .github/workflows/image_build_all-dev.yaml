@@ -9,11 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  KERNEL_REPO: 'rodriguezst/linux'
-  KERNEL_REF: 'v6.1.98-nabu'
-  KERNEL_DEFCONFIG: 'xiaomi_nabu_defconfig'
-  KERNEL_DTB_NAME: 'sm8150-xiaomi-nabu-maverick.dtb'
-  # KERNEL_VERSION is set at "kernel" job
+  KERNEL_REPO: 'rodriguezst/manjaro-kernel-nabu'
+  KERNEL_REF: 'linux61-nabu'
   QBOOTCTL_REPO: 'rodriguezst/qbootctl-pkgbuild'
   QBOOTCTL_REF: 'main'
 
@@ -29,31 +26,24 @@ jobs:
           ref: ${{ env.KERNEL_REF }}
           fetch-depth: '1'
 
-      - name: Install Dependencies
-        run: sudo apt update && sudo apt install build-essential gcc-aarch64-linux-gnu bc flex bison 7zip kmod bash cpio binutils tar git wget dpkg libssl-dev
-
-      - name: Build kernel
+      -
+        name: Makepkg Build and Check
+        id: makepkg
+        uses: rodriguezst/pkgbuild-arm64-action@v1
+        with:
+          makepkgArgs: -s
+      - 
+        name: Copy Package Files
         run: |
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- $KERNEL_DEFCONFIG
-          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image.gz dtbs
-          mkdir -p ./install/boot
-          _kernel_version="$(make kernelrelease -s)"
-          cp arch/arm64/boot/Image.gz ./install/boot/vmlinuz-$_kernel_version
-          cp arch/arm64/boot/dts/qcom/$KERNEL_DTB_NAME ./install/boot/dtb-$_kernel_version
-          make ARCH=arm64 install INSTALL_PATH=./install/boot
-          make ARCH=arm64 dtbs_install INSTALL_DTBS_PATH=./install/boot/dtbs
-          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules
-          make ARCH=arm64 modules_install INSTALL_MOD_PATH=./install
-          mkdir -p ./install/usr/ && mv ./install/lib ./install/usr/lib
-          cd ./install && tar zcvf ../kernel.tar.gz . && cd ..
-          echo "KERNEL_VERSION=$_kernel_version" >> $GITHUB_ENV
+          mkdir -p ./artifacts
+          find . -type f -name '*.pkg.tar.*' -exec cp '{}' ./artifacts/ ';'
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4
         with:
           # Artifact name
-          name: built_kernel
-          path: ${{ github.workspace }}/kernel.tar.gz
+          name: pkg-kernel
+          path: ${{ github.workspace }}/artifacts/*
   
   qbootctl:
     name: Build qbootctl
@@ -66,11 +56,6 @@ jobs:
           ref: ${{ env.QBOOTCTL_REF }}
           path: qbootctl
           fetch-depth: '1'
-      - 
-        id: time
-        uses: boredland/get-time-action@2.0.0
-        with:
-          format: 'YYYYMMDD'
       -
         name: buildarmpkg
         uses: rodriguezst/manjaro-buildarmpkg-action@main
@@ -105,18 +90,9 @@ jobs:
       - 
         uses: actions/download-artifact@v4
         with:
-          pattern: built_kernel
-      - 
-        uses: actions/download-artifact@v4
-        with:
-          pattern: pkg-qbootctl
-      - 
-        name: Unpack built kernel and install qbootctl
-        shell: bash
-        run: |
-          cd overlay && tar zxvf ../built_kernel/kernel.tar.gz && cd ../
-          cp pkg-qbootctl/*.pkg.* packages/
-          find packages/
+          pattern: pkg-*
+          merge-multiple: true
+          path: ${{ github.workspace }}/packages
       -
         id: image-build
         uses: rodriguezst/manjaro-rootfs@master
