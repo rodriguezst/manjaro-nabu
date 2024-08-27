@@ -37,7 +37,7 @@ if ! uname -m | grep -q aarch64; then
 fi
 
 # Enter the chroot environment and remove the linux61 package using pacman
-chroot $ROOTFS_DIR pacman --noconfirm -R linux61
+#chroot $ROOTFS_DIR pacman --noconfirm -R linux61
 
 # Install packages
 chroot $ROOTFS_DIR pacman-key --init
@@ -45,26 +45,6 @@ chroot $ROOTFS_DIR pacman-key --populate archlinuxarm manjaro manjaro-arm
 
 # Add files from the overlay directory to the rootfs directory
 rsync -a --chown=root:root overlay/ $ROOTFS_DIR/
-
-# Regenerate initramfs and build UKI image for EFI booting
-INSTALLED_KERNEL=$(ls $ROOTFS_DIR/usr/lib/modules/)
-chroot $ROOTFS_DIR mkinitcpio --generate /boot/initramfs-linux.img --kernel $INSTALLED_KERNEL
-KERNEL="/boot/vmlinuz-$INSTALLED_KERNEL"
-DEVICETREE="/boot/dtb-$INSTALLED_KERNEL"
-INITRAMFS="/boot/initramfs-linux.img"
-chroot $ROOTFS_DIR pacman -Syyu systemd-ukify --noconfirm --noprogressbar
-# UKI needs ARM64 kernel images to be uncompressed
-cp $ROOTFS_DIR/$KERNEL Image.gz && gunzip -d Image.gz && mv Image "$ROOTFS_DIR/boot/Image-$INSTALLED_KERNEL"
-# Generated UKI image is named grubaa64.efi to match the hardcoded paths in https://github.com/BigfootACA/simple-init/blob/master/src/boot/efi_path.c
-mkdir -p "$ROOTFS_DIR/boot/efi/EFI/manjaro"
-chroot $ROOTFS_DIR ukify build  \
-              --linux="/boot/Image-$INSTALLED_KERNEL" \
-              --initrd=$INITRAMFS \
-              --cmdline="console=tty0 root=PARTLABEL=linux rw rootwait selinux=0 quiet splash" \
-              --devicetree=$DEVICETREE \
-              --uname=$INSTALLED_KERNEL \
-              --output="/boot/efi/EFI/manjaro/grubaa64.efi"
-rm -rf "$ROOTFS_DIR/boot/Image-$INSTALLED_KERNEL"
 
 case "$EDITION" in
   kde-plasma)
