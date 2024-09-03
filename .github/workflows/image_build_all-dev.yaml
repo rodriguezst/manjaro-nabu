@@ -154,6 +154,7 @@ jobs:
           branch: ${{ matrix.branch }}
           version: ${{ matrix.branch }}-${{ steps.time.outputs.time }}
           arm-profiles-repo: 'https://github.com/rodriguezst/manjaro-arm-profiles'
+          arm-tools-repo: 'https://github.com/rodriguezst/manjaro-arm-tools'
           pkgdir: "packages"
           hostname: "nabu"
           #gpg-key: ${{ secrets.CI_GPG_SECRET }}
