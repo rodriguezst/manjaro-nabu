@@ -30,14 +30,56 @@ jobs:
           ref: ${{ env.KERNEL_REF }}
           fetch-depth: '1'
 
-      -
-        name: Makepkg Build and Check
-        id: makepkg
-        uses: rodriguezst/pkgbuild-arm64-action@v1
-        with:
-          makepkgArgs: -s
-      - 
-        name: Copy Package Files
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt install \
+            build-essential \
+            gcc-aarch64-linux-gnu \
+            libarchive-dev \
+            libarchive-tools \
+            meson
+
+      - name: Install pacman
+        shell: bash
+        env:
+          PACMAN_VERSION: 6.0.2
+        run: |
+          sudo git clone --depth 1 https://gitlab.manjaro.org/packages/core/pacman.git
+          pushd pacman
+            sudo wget https://sources.archlinux.org/other/pacman/pacman-${PACMAN_VERSION}.tar.xz
+            sudo tar -xvf pacman-${PACMAN_VERSION}.tar.xz
+            pushd pacman-${PACMAN_VERSION}
+            #  sudo patch -p1 -i ../pacman-sync-first-option.patch Removed
+              sudo meson --prefix=/usr \
+                        --buildtype=plain \
+                        -Ddoc=disabled \
+                        -Ddoxygen=enabled \
+                        -Dscriptlet-shell=/usr/bin/bash \
+                        -Dldconfig=/usr/bin/ldconfig \
+                        build
+              sudo meson compile -C build
+              sudo meson install -C build
+            popd
+            sudo install -m644 pacman.conf /etc/pacman.conf
+            sudo install -m644 makepkg.conf /etc/
+            sudo mkdir -p /etc/pacman.d
+            sudo touch /etc/pacman.d/mirrorlist
+          popd
+
+      - name: Run makepkg
+        shell: bash
+        run: |
+          cat << EOM | sudo tee -a /etc/makepkg.conf
+          CARCH="aarch64"
+          CHOST="aarch64-linux-gnu"
+          export ARCH='arm64'
+          export CROSS_COMPILE='aarch64-linux-gnu-'
+          EOM
+          makepkg -d
+
+      - name: Copy Package Files
         run: |
           mkdir -p ./artifacts
           find . -type f -name '*.pkg.tar.*' -exec cp '{}' ./artifacts/ ';'
