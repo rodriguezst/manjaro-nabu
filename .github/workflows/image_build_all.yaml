@@ -9,17 +9,18 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  KERNEL_REPO: 'rodriguezst/linux'
-  KERNEL_REF: 'v6.1.98-nabu'
-  KERNEL_DEFCONFIG: 'xiaomi_nabu_defconfig'
-  KERNEL_DTB_NAME: 'sm8150-xiaomi-nabu-maverick.dtb'
-  # KERNEL_VERSION is set at "kernel" job
-  QBOOTCTL_REPO: 'rodriguezst/qbootctl'
+  KERNEL_REPO: 'rodriguezst/manjaro-kernel-nabu'
+  KERNEL_REF: 'linux61-nabu'
+  QBOOTCTL_REPO: 'rodriguezst/qbootctl-pkgbuild'
   QBOOTCTL_REF: 'main'
+  FIRMWARE_REPO: 'rodriguezst/firmware-nabu-pkgbuild'
+  FIRMWARE_REF: 'master'
+  TWEAKS_REPO: 'rodriguezst/manjaro-nabu-tweaks'
+  TWEAKS_REF: 'master'
 
 jobs:
   kernel:
-    name: Build kernel
+    name: Makepkg kernel
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,43 +30,71 @@ jobs:
           ref: ${{ env.KERNEL_REF }}
           fetch-depth: '1'
 
-      - name: Install Dependencies
-        run: sudo apt update && sudo apt install build-essential gcc-aarch64-linux-gnu bc flex bison 7zip kmod bash cpio binutils tar git wget dpkg libssl-dev
-
-      - name: Build kernel
+      - name: Install dependencies
+        shell: bash
         run: |
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- $KERNEL_DEFCONFIG
-          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image.gz dtbs
-          mkdir -p ./install/boot
-          _kernel_version="$(make kernelrelease -s)"
-          cp arch/arm64/boot/Image.gz ./install/boot/vmlinuz-$_kernel_version
-          cp arch/arm64/boot/dts/qcom/$KERNEL_DTB_NAME ./install/boot/dtb-$_kernel_version
-          make ARCH=arm64 install INSTALL_PATH=./install/boot
-          make ARCH=arm64 dtbs_install INSTALL_DTBS_PATH=./install/boot/dtbs
-          make -j$(nproc) ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules
-          make ARCH=arm64 modules_install INSTALL_MOD_PATH=./install
-          mkdir -p ./install/usr/ && mv ./install/lib ./install/usr/lib
-          cd ./install && tar zcvf ../kernel.tar.gz . && cd ..
-          echo "KERNEL_VERSION=$_kernel_version" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt install \
+            build-essential \
+            gcc-aarch64-linux-gnu \
+            libarchive-dev \
+            libarchive-tools \
+            meson
+
+      - name: Install pacman
+        shell: bash
+        env:
+          PACMAN_VERSION: 6.0.2
+        run: |
+          sudo git clone --depth 1 https://gitlab.manjaro.org/packages/core/pacman.git
+          pushd pacman
+            sudo wget https://sources.archlinux.org/other/pacman/pacman-${PACMAN_VERSION}.tar.xz
+            sudo tar -xvf pacman-${PACMAN_VERSION}.tar.xz
+            pushd pacman-${PACMAN_VERSION}
+            #  sudo patch -p1 -i ../pacman-sync-first-option.patch Removed
+              sudo meson --prefix=/usr \
+                        --buildtype=plain \
+                        -Ddoc=disabled \
+                        -Ddoxygen=enabled \
+                        -Dscriptlet-shell=/usr/bin/bash \
+                        -Dldconfig=/usr/bin/ldconfig \
+                        build
+              sudo meson compile -C build
+              sudo meson install -C build
+            popd
+            sudo install -m644 pacman.conf /etc/pacman.conf
+            sudo install -m644 makepkg.conf /etc/
+            sudo mkdir -p /etc/pacman.d
+            sudo touch /etc/pacman.d/mirrorlist
+          popd
+
+      - name: Run makepkg
+        shell: bash
+        run: |
+          cat << EOM | sudo tee -a /etc/makepkg.conf
+          CARCH="aarch64"
+          CHOST="aarch64-linux-gnu"
+          export ARCH='arm64'
+          export CROSS_COMPILE='aarch64-linux-gnu-'
+          EOM
+          makepkg -d
+
+      - name: Copy Package Files
+        run: |
+          mkdir -p ./artifacts
+          find . -type f -name '*.pkg.tar.*' -exec cp '{}' ./artifacts/ ';'
 
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4
         with:
           # Artifact name
-          name: built_kernel
-          path: ${{ github.workspace }}/kernel.tar.gz
+          name: pkg-kernel
+          path: ${{ github.workspace }}/artifacts/*
   
   qbootctl:
-    name: Build qbootctl
+    name: Makepkg qbootctl
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout kernel repo
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.KERNEL_REPO }}
-          ref: ${{ env.KERNEL_REF }}
-          path: kernel
-          fetch-depth: '1'
       - name: Checkout qbootctl repo
         uses: actions/checkout@v4
         with:
@@ -73,51 +102,77 @@ jobs:
           ref: ${{ env.QBOOTCTL_REF }}
           path: qbootctl
           fetch-depth: '1'
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      -
+        name: buildarmpkg
+        uses: rodriguezst/manjaro-buildarmpkg-action@main
         with:
-          platforms: arm64
-      
-      - name: Write script for docker
-        run: |
-          echo "#!/bin/bash" > run-in-docker.sh
-          echo "export DEBIAN_FRONTEND=noninteractive" >> run-in-docker.sh
-          echo "apt update" >> run-in-docker.sh
-          echo "apt -y install make rsync zlib1g-dev meson cmake" >> run-in-docker.sh
-          echo "cd kernel" >> run-in-docker.sh
-          echo "make headers_install" >> run-in-docker.sh
-          echo "cd ../qbootctl" >> run-in-docker.sh
-          echo "meson build" >> run-in-docker.sh
-          echo "meson compile -C build" >> run-in-docker.sh
-          chmod +x run-in-docker.sh
-
-      - name: Run in Docker
-        run: |
-          docker run \
-            --rm \
-            -v $(pwd):/${{ github.workspace }} \
-            -w ${{ github.workspace }} \
-            --platform linux/arm64 \
-            ubuntu:latest \
-            bash run-in-docker.sh
+          pkgbuild-dir: ./qbootctl
+          output-dir: ./artifacts
       - name: Upload built artifacts
         uses: actions/upload-artifact@v4
         with:
           # Artifact name
-          name: built_qbootctl
-          path: ${{ github.workspace }}/qbootctl/build/qbootctl
+          name: pkg-qbootctl
+          path: ${{ github.workspace }}/artifacts/*
+
+  firmware:
+    name: Makepkg firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout firmware-nabu repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FIRMWARE_REPO }}
+          ref: ${{ env.FIRMWARE_REF }}
+          path: firmware
+          fetch-depth: '1'
+      -
+        name: buildarmpkg
+        uses: rodriguezst/manjaro-buildarmpkg-action@main
+        with:
+          pkgbuild-dir: ./firmware
+          output-dir: ./artifacts
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: pkg-firmware
+          path: ${{ github.workspace }}/artifacts/*
+
+  nabu-tweaks:
+    name: Makepkg nabu-tweaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout nabu-tweaks repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TWEAKS_REPO }}
+          ref: ${{ env.TWEAKS_REF }}
+          path: tweaks
+          fetch-depth: '1'
+      -
+        name: buildarmpkg
+        uses: rodriguezst/manjaro-buildarmpkg-action@main
+        with:
+          pkgbuild-dir: ./tweaks
+          output-dir: ./artifacts
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          # Artifact name
+          name: pkg-tweaks
+          path: ${{ github.workspace }}/artifacts/*
 
   rootfs:
     name: Build RootFS Image
     runs-on: ubuntu-22.04
-    needs: [kernel, qbootctl]
+    needs: [kernel, qbootctl, firmware, nabu-tweaks]
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         DEVICE: [generic-efi]
-        EDITION: [gnome,kde-plasma,plasma-mobile,plasma-mobile-dev,phosh,mate,xfce,minimal]
+        EDITION: [gnome,gnome-mobile,kde-plasma,plasma-mobile,phosh,minimal]
         BRANCH: [stable]
     steps:
       - uses: actions/checkout@v4
@@ -129,20 +184,9 @@ jobs:
       - 
         uses: actions/download-artifact@v4
         with:
-          pattern: built_kernel
-      - 
-        uses: actions/download-artifact@v4
-        with:
-          pattern: built_qbootctl
-      - 
-        name: Unpack built kernel and install qbootctl
-        shell: bash
-        run: |
-          cd overlay && tar zxvf ../built_kernel/kernel.tar.gz && cd ../
-          mkdir -p overlay/usr/local/bin
-          cp built_qbootctl/qbootctl overlay/usr/local/bin
-          chmod +x overlay/usr/local/bin/qbootctl
-          find overlay
+          pattern: pkg-*
+          merge-multiple: true
+          path: ${{ github.workspace }}/packages
       -
         id: image-build
         uses: rodriguezst/manjaro-rootfs@master
@@ -152,7 +196,9 @@ jobs:
           branch: ${{ matrix.branch }}
           version: ${{ matrix.branch }}-${{ steps.time.outputs.time }}
           arm-profiles-repo: 'https://github.com/rodriguezst/manjaro-arm-profiles'
-          pkgdir: "${{ github.workspace }}/packages"
+          arm-tools-repo: 'https://github.com/rodriguezst/manjaro-arm-tools'
+          pkgdir: "packages"
+          hostname: "nabu"
           #gpg-key: ${{ secrets.CI_GPG_SECRET }}
           #gpg-passphrase: ${{ secrets.CI_GPG_PASSPHRASE }}
       -
@@ -194,19 +240,6 @@ jobs:
           cd ./artifacts && ls -1 . >> ${{ github.workspace }}/RELEASE.md && cd ../
           sed -i 's/^image-/* /' ${{ github.workspace }}/RELEASE.md
           echo "**Build Log**: [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> ${{ github.workspace }}/RELEASE.md
-      -
-        name: Make release
-        uses: softprops/action-gh-release@v2.0.6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.time.outputs.time }}-${{ github.run_id }}
-          body_path: ${{ github.workspace }}/RELEASE.md
-          name: Manjaro ARM Stable ${{ steps.time.outputs.time }}
-          draft: false
-          prerelease: false
-          files: |
-            artifacts/**/*.xz
       - 
         name: Make release
         uses: ncipollo/release-action@v1
@@ -217,5 +250,5 @@ jobs:
           name: Manjaro ARM Stable (${{ steps.time.outputs.time }})
           bodyFile: ${{ github.workspace }}/RELEASE.md
           draft: false
-          prerelease: false
+          prerelease: true
           artifacts: artifacts/**/*.xz
