@@ -46,14 +46,6 @@ chroot $ROOTFS_DIR pacman-key --populate archlinuxarm manjaro manjaro-arm
 # Add files from the overlay directory to the rootfs directory
 rsync -a --chown=root:root overlay/ $ROOTFS_DIR/
 
-case "$EDITION" in
-  kde-plasma)
-    echo "Setting initial screen orientation for $EDITION"
-    cp "./misc/kwinoutputconfig.json" "$ROOTFS_DIR/home/oem/.config/kwinoutputconfig.json"
-    ;;
-esac
-
-
 # If the system architecture is not aarch64, clean up the binfmt_misc registrations and QEMU binary
 if ! uname -m | grep -q aarch64; then
   # Unregister the aarch64 binfmt_misc handlers
