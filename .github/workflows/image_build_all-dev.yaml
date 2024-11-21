@@ -10,13 +10,13 @@ concurrency:
 
 env:
   KERNEL_REPO: 'rodriguezst/manjaro-kernel-nabu'
-  KERNEL_REF: 'linux61-nabu'
+  KERNEL_REF: 'linux612-nabu'
   QBOOTCTL_REPO: 'rodriguezst/qbootctl-pkgbuild'
   QBOOTCTL_REF: 'main'
   FIRMWARE_REPO: 'rodriguezst/firmware-nabu-pkgbuild'
   FIRMWARE_REF: 'master'
   TWEAKS_REPO: 'rodriguezst/manjaro-nabu-tweaks'
-  TWEAKS_REF: 'master'
+  TWEAKS_REF: 'linux-6.12'
 
 jobs:
   kernel:
