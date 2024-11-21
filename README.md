@@ -10,7 +10,7 @@ Development Branch for Manjaro ARM images for Xiaomi Pad 5
 ## Features
 
 - RootFS images built using official Manjaro ARM workflows
-- Linux kernel 6.1 for nabu based on maverickjb and updated to 6.1.98
+- Linux kernel 6.12
 - Persistent WLAN MAC address across reboots
 - Qbootctl command with systemd service to set boot flag as successful
 - Nabu firmware and alsa files from map220v
